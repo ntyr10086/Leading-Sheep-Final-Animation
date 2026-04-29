@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>第十五屆資管領頭羊宇宙冒險</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        /* 整體宇宙風格設定 */
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #060a14;
+            color: #00f5ff;
+            font-family: 'Press Start 2P', cursive;
+            overflow: hidden;
+            cursor: none; /* 隱藏原本的游標 */
+            image-rendering: pixelated;
+        }
+
+        #gameCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+
+        /* UI 介面層 */
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+            pointer-events: none; /* 讓點擊穿透到 Canvas */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* 對話框風格 */
+        .dialogue-box {
+            position: absolute;
+            bottom: 50px;
+            width: 80%;
+            background: rgba(85, 51, 255, 0.85); /* 宇宙紫 */
+            border: 4px solid #00f5ff; /* 霓虹青 */
+            box-shadow: 0 0 15px #00f5ff;
+            padding: 20px;
+            font-size: 16px;
+            line-height: 1.5;
+            display: none;
+            text-align: left;
+            pointer-events: auto;
+        }
+
+        .dialogue-box .speaker {
+            color: #00ff88; /* 像素綠 */
+            margin-bottom: 10px;
+        }
+
+        .blink-space {
+            animation: blink 1s infinite;
+            font-size: 12px;
+            color: #c8d8e8; /* 星艦銀 */
+            position: absolute;
+            bottom: 10px;
+            right: 20px;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
+        /* 密碼輸入框風格 */
+        .input-container {
+            display: none;
+            background: rgba(6, 10, 20, 0.9);
+            border: 2px solid #00ff88;
+            padding: 30px;
+            text-align: center;
+            pointer-events: auto;
+            box-shadow: 0 0 20px #00ff88;
+        }
+
+        input[type="text"] {
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid #00f5ff;
+            color: #00f5ff;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 18px;
+            outline: none;
+            text-align: center;
+            margin-top: 15px;
+            padding: 5px;
+        }
+
+        .scene-title {
+            position: absolute;
+            top: 20px;
+            font-size: 24px;
+            color: #c8d8e8;
+            text-shadow: 0 0 10px #c8d8e8;
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <div id="ui-layer">
+        <div id="sceneTitle" class="scene-title">開頭：發光的魔鏡</div>
+
+        <div id="inputBox" class="input-container">
+            <div>輸入咒語密碼解鎖魔鏡記憶：</div>
+            <input type="text" id="passwordInput" autocomplete="off" placeholder="???">
+        </div>
+
+        <div id="dialogueBox" class="dialogue-box">
+            <div id="speakerName" class="speaker">小羊</div>
+            <div id="dialogueText">魔鏡啊魔鏡，誰是這世界上最棒的領頭羊？</div>
+            <div class="blink-space">按 [空白鍵] 繼續</div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let width, height;
+        function resize() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        // --- 狀態管理 ---
+        let gameState = 0; 
+        /* 0: 開頭動畫 
+         1: 輸入密碼1 (校園google) -> 準備進入迷宮
+         2: 迷宮關卡 (展示用)
+         3: 輸入密碼2 (健康存摺) -> 準備進入射擊
+         4: 射擊關卡 (展示用)
+         5: 輸入密碼3 (成為學習的主人) -> 準備進入跑酷
+         6: 跑酷關卡 (展示用)
+         7: 結尾對話
+        */
+        let dialogueStep = 0;
+
+        // UI 元素
+        const dialogueBox = document.getElementById('dialogueBox');
+        const dialogueText = document.getElementById('dialogueText');
+        const speakerName = document.getElementById('speakerName');
+        const inputBox = document.getElementById('inputBox');
+        const passwordInput = document.getElementById('passwordInput');
+        const sceneTitle = document.getElementById('sceneTitle');
+
+        // --- 小羊飛船 (游標) ---
+        const sheep = {
+            x: width / 2, y: height / 2,
+            targetX: width / 2, targetY: height / 2,
+            size: 40
+        };
+
+        // 監聽滑鼠移動
+        window.addEventListener('mousemove', (e) => {
+            sheep.targetX = e.clientX;
+            sheep.targetY = e.clientY;
+        });
+
+        // 引擎粒子系統
+        const particles = [];
+        function createParticle(x, y) {
+            particles.push({
+                x: x, y: y,
+                vx: (Math.random() - 0.5) * 2,
+                vy: Math.random() * 2 + 1,
+                life: 1,
+                color: Math.random() > 0.5 ? '#00f5ff' : '#00ff88'
+            });
+        }
+
+        // --- 繪製函數 ---
+        function drawSheep() {
+            // 慣性移動 (Lerp)
+            sheep.x += (sheep.targetX - sheep.x) * 0.08;
+            sheep.y += (sheep.targetY - sheep.y) * 0.08;
+
+            // 產生噴射粒子
+            if (Math.abs(sheep.targetX - sheep.x) > 1 || Math.abs(sheep.targetY - sheep.y) > 1) {
+                createParticle(sheep.x, sheep.y + 10);
+            }
+
+            // 更新與繪製粒子
+            for (let i = particles.length - 1; i >= 0; i--) {
+                let p = particles[i];
+                p.x += p.vx; p.y += p.vy;
+                p.life -= 0.05;
+                if (p.life <= 0) {
+                    particles.splice(i, 1);
+                } else {
+                    ctx.globalAlpha = p.life;
+                    ctx.fillStyle = p.color;
+                    ctx.fillRect(p.x - 2, p.y, 4, 4);
+                    ctx.globalAlpha = 1;
+                }
+            }
+
+            ctx.save();
+            ctx.translate(sheep.x, sheep.y);
+
+            // 畫一艘簡單的像素飛船 (星艦銀)
+            ctx.fillStyle = '#c8d8e8';
+            ctx.fillRect(-20, 0, 40, 15);
+            ctx.fillRect(-10, -5, 20, 5);
+            
+            // 畫小羊身體 (藍灰毛色)
+            ctx.fillStyle = '#6a7b8c';
+            ctx.fillRect(-15, -25, 30, 20);
+            
+            // 黑框綠太陽眼鏡
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(-12, -20, 24, 8);
+            ctx.fillStyle = '#00ff88';
+            ctx.fillRect(-10, -18, 8, 4);
+            ctx.fillRect(2, -18, 8, 4);
+
+            // 胸前 01
+            ctx.fillStyle = '#00f5ff';
+            ctx.font = '8px "Press Start 2P"';
+            ctx.fillText('01', -6, -8);
+
+            ctx.restore();
+        }
+
+        function drawMirror() {
+            // 畫面中央的發光魔鏡
+            ctx.fillStyle = '#5533ff';
+            ctx.shadowBlur = 20;
+            ctx.shadowColor = '#00f5ff';
+            ctx.beginPath();
+            ctx.ellipse(width / 2, height / 2, 80, 120, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            
+            ctx.fillStyle = '#060a14';
+            ctx.beginPath();
+            ctx.ellipse(width / 2, height / 2, 70, 110, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // 如果小羊靠近，顯示可愛眼睛
+            let dist = Math.hypot(sheep.x - width/2, sheep.y - height/2);
+            if (dist < 150 && gameState === 0 && dialogueBox.style.display !== 'block') {
+                ctx.fillStyle = '#00f5ff';
+                ctx.beginPath(); ctx.arc(width/2 - 20, height/2 - 10, 8, 0, Math.PI*2); ctx.fill();
+                ctx.beginPath(); ctx.arc(width/2 + 20, height/2 - 10, 8, 0, Math.PI*2); ctx.fill();
+                ctx.fillStyle = '#000';
+                ctx.beginPath(); ctx.arc(width/2 - 20, height/2 - 10, 3, 0, Math.PI*2); ctx.fill();
+                ctx.beginPath(); ctx.arc(width/2 + 20, height/2 - 10, 3, 0, Math.PI*2); ctx.fill();
+            }
+        }
+
+        // --- 遊戲主迴圈 ---
+        function loop() {
+            ctx.fillStyle = 'rgba(6, 10, 20, 0.3)'; // 產生星空拖尾感
+            ctx.fillRect(0, 0, width, height);
+
+            drawMirror();
+            drawSheep();
+
+            requestAnimationFrame(loop);
+        }
+
+        // --- 互動邏輯 ---
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                if (gameState === 0) handleIntroDialogue();
+                else if (gameState === 2) { gameState = 3; triggerInput("健康存摺", "關卡2：射擊遊戲區"); }
+                else if (gameState === 4) { gameState = 5; triggerInput("成為學習的主人", "關卡3：跑酷遊戲區"); }
+                else if (gameState === 6) { gameState = 7; handleEndingDialogue(); }
+                else if (gameState === 7) handleEndingDialogue();
+            }
+        });
+
+        // 處理開場對話
+        function handleIntroDialogue() {
+            dialogueBox.style.display = 'block';
+            if (dialogueStep === 0) {
+                speakerName.innerText = "小羊";
+                dialogueText.innerText = "魔鏡啊魔鏡，誰是這世界上最棒的領頭羊？";
+                dialogueStep++;
+            } else if (dialogueStep === 1) {
+                speakerName.innerText = "魔鏡";
+                dialogueText.innerText = "當然是...";
+                dialogueStep++;
+            } else if (dialogueStep === 2) {
+                dialogueBox.style.display = 'none';
+                gameState = 1;
+                triggerInput("校園google", "關卡1：照片迷宮區");
+            }
+        }
+
+        // 處理結尾對話
+        function handleEndingDialogue() {
+            dialogueBox.style.display = 'block';
+            sceneTitle.innerText = "終點：回到魔鏡前";
+            if (dialogueStep === 2) {
+                speakerName.innerText = "魔鏡";
+                dialogueText.innerText = "現在跟我一起回答，這世界上最棒的領頭羊是...";
+                dialogueStep++;
+            } else if (dialogueStep === 3) {
+                speakerName.innerText = "魔鏡 & 小羊";
+                dialogueText.innerText = "是資管系！！";
+                // 結束！
+            }
+        }
+
+        // 觸發密碼輸入
+        let currentTargetPassword = "";
+        function triggerInput(correctPassword, nextSceneName) {
+            sceneTitle.innerText = "異空間宇宙跳躍中...";
+            inputBox.style.display = 'block';
+            passwordInput.value = "";
+            passwordInput.focus();
+            currentTargetPassword = correctPassword;
+            
+            passwordInput.onkeydown = (e) => {
+                if (e.key === 'Enter') {
+                    if (passwordInput.value === currentTargetPassword) {
+                        inputBox.style.display = 'none';
+                        sceneTitle.innerText = nextSceneName;
+                        // 密碼正確，推進狀態
+                        gameState++; 
+                        showLevelMessage(nextSceneName);
+                    } else {
+                        alert("密碼錯誤，請重新輸入！(提示: " + currentTargetPassword + ")");
+                    }
+                }
+            };
+        }
+
+        function showLevelMessage(text) {
+            dialogueBox.style.display = 'block';
+            speakerName.innerText = "系統";
+            dialogueText.innerText = `進入 ${text}！(由於篇幅限制，請按空白鍵模擬通關抵達終點魔鏡)`;
+        }
+
+        // 初始啟動
+        dialogueBox.style.display = 'block';
+        speakerName.innerText = "操作提示";
+        dialogueText.innerText = "移動滑鼠控制小羊飛船，靠近魔鏡後按下 [空白鍵] 開始互動！";
+        loop();
+
+    </script>
+</body>
+</html>
