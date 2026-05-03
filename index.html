@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>翻轉魔羊 - 自動播放動畫</title>
+<title>翻轉魔羊</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Noto+Sans+TC:wght@400;700;900&display=swap" rel="stylesheet">
@@ -191,8 +191,8 @@ const LEVELS = [
 
 const SCRIPT = [
   { stage: 'question', speaker: '小 羊', text: '魔鏡啊魔鏡，誰是這世界上最棒的領頭羊？', cls: 'sheep', duration: 3000 },
-  { stage: 'intro', speaker: '魔 羊', text: '哼哼…想成為領頭羊嗎？那就跟我進入記憶宇宙，翻轉四個世界的規則吧！', cls: 'magic', duration: 4000 },
-  { stage: 'intro', speaker: '魔 羊', text: '收集每個世界的記憶碎片，答對咒語，才能揭開真正的答案…', cls: 'magic', duration: 4000 },
+  { stage: 'intro', speaker: '魔 鏡', text: '哼哼…想知道嗎？那就進入記憶宇宙，尋找答案吧！', cls: 'magic', duration: 4000 },
+  { stage: 'intro', speaker: '魔 鏡', text: '收集每個世界的記憶碎片，才能揭開真正的答案…', cls: 'magic', duration: 4000 },
   { stage: 'level', level: 0 },
   { stage: 'level', level: 1 },
   { stage: 'level', level: 2 },
@@ -709,7 +709,7 @@ class AutoPlayGame {
     // 4秒后显示第二段对话
     setTimeout(() => {
       console.log('显示第二段结局对话...');
-      this.showDialog('魔 羊  &  小 羊', '是 資 管 系 !! 🎉', 'both');
+      this.showDialog('魔 鏡  &  小 羊', '是 資 管 系 !! 🎉', 'both');
       
       // 再5秒后回到开头场景并显示"再播放一次"按钮
       setTimeout(() => {
