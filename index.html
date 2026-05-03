@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>翻轉魔羊</title>
+<title>翻轉魔羊 - 自動播放動畫</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Noto+Sans+TC:wght@400;700;900&display=swap" rel="stylesheet">
@@ -191,8 +191,8 @@ const LEVELS = [
 
 const SCRIPT = [
   { stage: 'question', speaker: '小 羊', text: '魔鏡啊魔鏡，誰是這世界上最棒的領頭羊？', cls: 'sheep', duration: 3000 },
-  { stage: 'intro', speaker: '魔 鏡', text: '哼哼…想知道嗎？那就進入記憶宇宙，尋找答案吧！', cls: 'magic', duration: 4000 },
-  { stage: 'intro', speaker: '魔 鏡', text: '收集每個世界的記憶碎片，才能揭開真正的答案…', cls: 'magic', duration: 4000 },
+  { stage: 'intro', speaker: '魔 羊', text: '哼哼…想成為領頭羊嗎？那就跟我進入記憶宇宙，翻轉四個世界的規則吧！', cls: 'magic', duration: 4000 },
+  { stage: 'intro', speaker: '魔 羊', text: '收集每個世界的記憶碎片，答對咒語，才能揭開真正的答案…', cls: 'magic', duration: 4000 },
   { stage: 'level', level: 0 },
   { stage: 'level', level: 1 },
   { stage: 'level', level: 2 },
@@ -245,12 +245,16 @@ class AutoPlayGame {
   }
   
   executeScript() {
+    console.log(`executeScript called, scriptIndex: ${this.scriptIndex}, SCRIPT.length: ${SCRIPT.length}`);
+    
     if (this.scriptIndex >= SCRIPT.length) {
+      console.log('✅ 触发结尾场景！');
       this.showEnding();
       return;
     }
     
     const script = SCRIPT[this.scriptIndex];
+    console.log(`执行脚本: stage=${script.stage}, level=${script.level || 'N/A'}`);
     
     if (script.stage === 'question') {
       // 問題場景：小羊站在魔鏡前問問題
@@ -573,16 +577,7 @@ class AutoPlayGame {
       if (ex.image && ex.imageLoaded && ex.image.complete) {
         try {
           c.drawImage(ex.image, ex.x - w/2, ex.y - h/2, w, h);
-          
-          // 图片下方显示标签
-          c.fillStyle = '#fff';
-          c.font = 'bold 32px "Noto Sans TC"';
-          c.textAlign = 'center';
-          c.textBaseline = 'middle';
-          c.shadowColor = 'rgba(0,0,0,0.8)';
-          c.shadowBlur = 10;
-          c.fillText(ex.label, ex.x, ex.y + h/2 + 40);
-          c.shadowBlur = 0;
+          // 图片下方不显示文字（按用户要求移除）
         } catch (e) {
           // 图片绘制失败，显示文字
           this.drawExhibitText(c, ex, w, h);
@@ -665,6 +660,8 @@ class AutoPlayGame {
   
   triggerMirrorWipe() {
     const lv = LEVELS[this.level];
+    console.log(`🪞 触发魔镜传送！关卡: ${this.level}, 颜色: ${lv.accent}`);
+    
     const ui = document.getElementById('ui');
     
     // 创建魔镜传送特效
@@ -678,6 +675,7 @@ class AutoPlayGame {
       wipeDiv.remove();
       this.transitioning = false;
       this.scriptIndex++;
+      console.log(`传送完成，scriptIndex 增加到: ${this.scriptIndex}`);
       this.executeScript();
     }, 1500);
   }
@@ -691,6 +689,8 @@ class AutoPlayGame {
   }
   
   showEnding() {
+    console.log('🎉 showEnding 函数被调用！');
+    
     // 切换到结尾场景（和开头一样的背景：小羊站在魔镜前）
     this.mode = 'title';
     this.transitioning = false;
@@ -702,15 +702,18 @@ class AutoPlayGame {
     this.particles = [];
     this.autoMoving = false;
     
+    console.log('显示第一段结局对话...');
     // 显示第一段结局对话
     this.showDialog('小 羊', '魔鏡啊魔鏡，我收集了所有記憶！現在告訴我，誰是最棒的領頭羊？', 'sheep');
     
     // 4秒后显示第二段对话
     setTimeout(() => {
+      console.log('显示第二段结局对话...');
       this.showDialog('魔 羊  &  小 羊', '是 資 管 系 !! 🎉', 'both');
       
       // 再5秒后回到开头场景并显示"再播放一次"按钮
       setTimeout(() => {
+        console.log('显示再播放按钮...');
         this.hideDialog();
         this.showReplayButton();
       }, 5000);
